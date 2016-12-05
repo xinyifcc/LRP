@@ -1,0 +1,157 @@
+<pre name="code" class="python">#! /usr/bin/env python
+#-*-coding=utf-8 -*-
+import redis
+print redis.__file__
+# 连接，可选不同数据库
+r = redis.Redis(host='10.0.1.7', port=6379, db=1)
+ 
+# -------------------------------------------
+# 看信息
+info = r.info()
+for key in info:
+  print "%s: %s" % (key, info[key])
+ 
+# 查数据库大小
+print '\ndbsize: %s' % r.dbsize()
+ 
+# 看连接
+print "ping %s" % r.ping()
+ 
+# 选数据库
+#r.select(2)
+ 
+# 移动数据去2数据库
+#r.move('a',2)
+
+#r.save('a') # 存数据
+#r.lastsave('a') # 取最后一次save时间
+#r.flush()  #刷新
+#r.shutdown() #关闭所有客户端，停掉所有服务，退出服务器
+#
+#--------------------------------------------
+# 它有四种类型： string(key,value)、list(序列)、set(集合)、zset(有序集合,多了一个顺序属性)
+# 不知道你用的哪种类型？
+# print r.get_type('a') #可以告诉你
+# -------------------------------------------
+# string操作
+print '-'*20
+# 塞数据
+r['c1'] = 'bar'
+#或者
+r.set('c2','bar')
+#这里有个 getset属性，如果为True 可以在存新数据时将上次存储内容同时搞出来
+print 'getset:',r.getset('c2','jj')
+#如果你想设置一个递增的整数 每执行一次它自加1：
+print 'incr:',r.incr('a')
+#如果你想设置一个递减的整数 please:
+print 'decr:',r.decr('a')
+ 
+# 取数据
+print 'r['']:',r['c1']
+#或者
+print 'get:',r.get('a')
+#或者 同时取一批
+print 'mget:',r.mget('c1','c2')
+#或者 同时取一批 它们的名字(key)很像 而恰好你又不想输全部
+print 'keys:',r.keys('c*')
+#又或者 你只想随机取一个：
+print 'randomkey:',r.randomkey()
+ 
+# 查看一个数据有没有 有 1 无0
+print 'existes:',r.exists('a')
+ 
+# 删数据 1是删除成功 0和None是没这个东西
+print 'delete:',r.delete('cc')
+# 哦对了 它是支持批量操作的
+print 'delete:',r.delete('c1','c2')
+ 
+# 其他
+r.rename('a','c3') #呃.改名
+r.expire('c3',10) #让数据10秒后过期 说实话我不太明白么意思
+r.ttl('c3') #看剩余过期时间 不存在返回-1
+ 
+#--------------------------------
+# 序列(list)操作
+print '-'*20
+# 它是两头通的
+# 塞入
+r.push('b','gg')
+r.push('b','hh')
+# head 属性控制是不是从另一头塞
+r.push('b','ee',head=True)
+# 看长度
+print 'list len:',r.llen('b')
+# 列出一批出来
+print 'list lrange:',r.lrange('b',start=0,end=-1)
+ 
+# 取出一位
+print 'list index 0:',r.lindex('b',0)
+ 
+# 修剪列表
+#若start 大于end,则将这个list清空
+print 'list ltrim :',r.ltrim('b',start=0,end=3) #只留 从0到3四位
+ 
+# 排序
+# 这可是个大工程
+ 
+#--------------------------------
+# 集合(set)操作
+# 塞数据
+r.sadd('s', 'a')
+ 
+# 判断一个set长度为多少 不存在为0
+r.scard('s')
+ 
+# 判断set中一个对象是否存在
+r.sismember('s','a')
+ 
+# 求交集
+r.sadd('s2','a')
+r.sinter('s1','s2')
+ 
+#求交集并将结果赋值
+r.sinterstore('s3','s1','s2')
+ 
+# 看一个set对象
+r.smembers('s3')
+ 
+# 求并集
+r.sunion('s1','s2')
+# 阿 我想聪明的你已经猜到了
+#求并集 并将结果返回
+r.sunionstore('ss','s1','s2','s3')
+ 
+# 求不同
+# 在s1中有，但在s2和s3中都没有的数
+r.sdiff('s1','s2','s3')
+r.sdiffstore('s4','s1','s2')# 这个你懂的
+ 
+# 取个随机数
+r.srandmember('s1')
+ 
+#-------------------------------------
+#zset 有序set
+#'zadd', 'zcard', 'zincr', 'zrange', 'zrangebyscore', 'zrem', 'zscore'
+# 分别对应
+#添加, 数量, 自加1,取数据,按照积分(范围)取数据,删除,取积分
+ 
+# 我靠 你玩死我了 redis!
+# 今天在实验中，我尝试插入一条zset类型数据:
+r1.zset(u'www.liyi99.com','liwu',3)
+# 插入成功
+# 我继续插入
+r1.zset(u'www.liyi99,com',u'\u9001\u793c',5)
+#报错:
+#UnicodeDecodeError: 'ascii' codec can't decode byte 0xe4 in position 0: ordinal not in range(128)
+#这次插入的是礼物的中文词 unicode编码
+#为什么会失败那，这条数据是我从redis里面取出来然后没做任何修改再插入的阿
+#redis返回和接受的数据类型都是unicode编码的阿
+#好吧，我们再次插入试试
+#再次插入
+r1.zset('www.liyi99.com',u'\u9001\u793c',5)
+#成功了
+#插入
+r1.zset('www.liyi99.com','礼物',5)
+#依然成功，跟入redis.py 1024行
+return self.send_command('ZADD %s %s %s\r\n%s\r\n' % (
+    key, score, len(member), member))
